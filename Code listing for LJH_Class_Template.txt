@@ -1,0 +1,2435 @@
+Code listing for: LJH_Class_Template
+Description: Include C01
+*&---------------------------------------------------------------------*
+*& Include          LJH_Class_Template
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_PROCESS01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_PROCESS01.
+
+*  PERFORM ALV_CL_CREATE_OBJ_DOCK_CONT(YEDSCOMA01)
+*    USING
+*      1500
+*      CL_GUI_DOCKING_CONTAINER=>DOCK_AT_TOP
+*    CHANGING
+*      G_DOCK_CONT01.
+
+* Customer Container Object 생성
+  PERFORM ALV_CL_CREATE_OBJ_CUST_CONT(YEDSCOMA01)
+    USING
+      C_CUST_CONT_NAME01
+    CHANGING
+      G_CUST_CONT01.
+
+* ALV Grid Object 생성
+  PERFORM ALV_CL_CREATE_OBJ_ALV_GRID(YEDSCOMA01)
+    USING
+      G_CUST_CONT01
+    CHANGING
+      G_ALV_GRID01.
+
+* ALV Variant
+  PERFORM ALV_CL_VARIANT01
+    CHANGING
+      GS_VARIANT01.
+
+* ALV Layout
+  PERFORM ALV_CL_LAYOUT01
+    CHANGING
+      GS_LAYOUT01.
+
+* Edit Event 등록
+  PERFORM ALV_CL_REGISTER_EDIT_EVENT01
+    USING
+      G_ALV_GRID01.
+
+* 제외할 ALV Function Code
+  PERFORM ALV_CL_EXCLUDE_FCODE01
+    CHANGING
+      GT_EXFCD01.
+
+* Event Receiver 생성 및 사용할 Event 지정
+  PERFORM ALV_CL_CREATE_OBJ_EVENT_RECV01
+    USING
+      G_ALV_GRID01
+    CHANGING
+      G_EVENT_RECEIVER01.
+
+* 셀 입력가능 설정
+  PERFORM ALV_CL_SET_FOR_INPUT01
+    USING
+      G_ALV_GRID01.
+
+* 특정 셀 속성 조정
+  PERFORM ALV_CL_CELL_CONTROL01
+    TABLES
+      GT_LIST01.
+
+* 정렬
+  PERFORM ALV_CL_SORT01
+    CHANGING
+      GT_SORT01.
+
+* Fieldcatalog
+  PERFORM ALV_CL_FIELDCATALOG_MERGE01
+    USING
+      C_ALV_STRUNAME01
+    CHANGING
+      GT_FDCAT01.
+
+** 필터
+*  PERFORM ALV_CL_FILTER01
+*    CHANGING
+*      GT_FILT01.
+
+** Dropdown Listbox
+*  PERFORM ALV_CL_DROPDOWN_LISTBOX01
+*    USING
+*      G_ALV_GRID01.
+
+* AVL First Display
+  PERFORM ALV_CL_SET_FOR_FIRST_DISPLAY01.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_VARIANT01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_VARIANT01
+  CHANGING
+    PS_VARIANT TYPE DISVARIANT.
+
+  CLEAR PS_VARIANT.
+
+* ABAP 프로그램이름
+  PS_VARIANT-REPORT   = SY-REPID.
+  PS_VARIANT-HANDLE   = C_VARIANT_HANDLE01.
+  PS_VARIANT-USERNAME = SY-UNAME.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_LAYOUT01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_LAYOUT01
+  CHANGING
+    PS_LAYOUT TYPE LVC_S_LAYO.
+  DATA:
+    L_TITLE TYPE LVC_TITLE.
+
+  CLEAR PS_LAYOUT.
+
+* Set a layout for the grid control
+  PS_LAYOUT-CWIDTH_OPT = 'X'.              "열너비 최적화
+  PS_LAYOUT-SEL_MODE = 'D'.                " 셀렉션모드 세팅
+  PS_LAYOUT-TOTALS_BEF = ' '.          " 합계 금액을 맨 위 라인에 보여줌
+*  PS_LAYOUT-NO_MERGING = 'X'.       " 컬럼정렬시 같은 값의 셀 합침 방지
+*  PS_LAYOUT-DETAILINIT = 'X'.       " 상세화면에서 기본값 노출여부 결정
+
+* "DISPLAY INITIAL VALUES ON DETAIL SCREEN
+*  PS_LAYOUT-NO_ROWMARK = 'X'.      " 그리드의 라인 선택버튼 제거
+  PS_LAYOUT-NO_ROWINS = 'X'.      " EXCEL 데이터 ALV로 복사 방지
+*  PS_LAYOUT-SMALLTITLE = 'X'.    " 타이틀 사이즈 결정
+  PS_LAYOUT-STYLEFNAME = 'CELLSTYL'.         "셀 스타일
+  PS_LAYOUT-CTAB_FNAME = 'CELLSCOL'.         "셀 색
+  PS_LAYOUT-ZEBRA = 'X'.                     "줄무늬 패턴
+*  PS_LAYOUT-GRID_TITLE = TEXT-GTX.          "타이틀바 내역
+*  PS_LAYOUT-NO_KEYFIX  = ' '.
+*  PS_LAYOUT-BOX_FNAME  = 'MARK'.
+  PS_LAYOUT-INFO_FNAME = 'ROWSCOL'.         "행 색
+
+* ALV 그리드 제목
+  PERFORM ALV_CL_SET_ALV_GRID_TITLE01
+    CHANGING
+      PS_LAYOUT-GRID_TITLE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_REGISTER_EDIT_EVENT01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_REGISTER_EDIT_EVENT01
+  USING
+    VALUE(P_ALV_GRID) TYPE REF TO CL_GUI_ALV_GRID.
+
+* Edit  이벤트 등록
+  IF SY-BATCH IS INITIAL.   " 프로그램이 백그라운드 작업으로 실행되는지 여부
+
+    CALL METHOD P_ALV_GRID->REGISTER_EDIT_EVENT
+      EXPORTING
+        I_EVENT_ID = CL_GUI_ALV_GRID=>MC_EVT_MODIFIED.
+*        I_EVENT_ID = CL_GUI_ALV_GRID=>MC_EVT_ENTER.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_EXCLUDE_FCODE01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_EXCLUDE_FCODE01
+  CHANGING
+    PT_EXFCD TYPE UI_FUNCTIONS.
+
+  CLEAR PT_EXFCD.
+
+  PERFORM ALV_CL_APPEND_EXCLUDE_FCODE(YEDSCOMA01)
+    USING PT_EXFCD:
+*      CL_GUI_ALV_GRID=>MC_FC_EXCL_ALL. " ** 툴바 모두제거 **
+      CL_GUI_ALV_GRID=>MC_FC_LOC_UNDO, " 실행취소&LOCAL&UNDO
+*      CL_GUI_ALV_GRID=>MC_FC_AUF,      " 소계확장 &AUF
+*      CL_GUI_ALV_GRID=>MC_FC_AVERAGE,  " &AVERAGE
+*      CL_GUI_ALV_GRID=>MC_FC_BACK_CLASSIC,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_ABC, " &ABC
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_CHAIN,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_CRBATCH,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_CRWEB,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_LINEITEMS,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_MASTER_DATA,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_MORE,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_REPORT,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_XINT,
+*      CL_GUI_ALV_GRID=>MC_FC_CALL_XXL,
+*      CL_GUI_ALV_GRID=>MC_FC_COL_INVISIBLE,
+*      CL_GUI_ALV_GRID=>MC_FC_COL_OPTIMIZE,
+*      CL_GUI_ALV_GRID=>MC_FC_CURRENT_VARIANT,
+*      CL_GUI_ALV_GRID=>MC_FC_DATA_SAVE,
+*      CL_GUI_ALV_GRID=>MC_FC_DELETE_FILTER,
+*      CL_GUI_ALV_GRID=>MC_FC_DESELECT_ALL,
+*      CL_GUI_ALV_GRID=>MC_FC_DETAIL,
+*      CL_GUI_ALV_GRID=>MC_FC_EXPCRDATA,
+*      CL_GUI_ALV_GRID=>MC_FC_EXPCRDESIG,
+*      CL_GUI_ALV_GRID=>MC_FC_EXPCRTEMPL,
+*      CL_GUI_ALV_GRID=>MC_FC_EXPMDB,
+*      CL_GUI_ALV_GRID=>MC_FC_EXTEND,
+*      CL_GUI_ALV_GRID=>MC_FC_F4,
+*      CL_GUI_ALV_GRID=>MC_FC_FILTER,
+*      CL_GUI_ALV_GRID=>MC_FC_FIND,
+*      CL_GUI_ALV_GRID=>MC_FC_FIX_COLUMNS,
+      CL_GUI_ALV_GRID=>MC_FC_GRAPH,
+*      CL_GUI_ALV_GRID=>MC_FC_HELP,
+      CL_GUI_ALV_GRID=>MC_FC_INFO,
+*      CL_GUI_ALV_GRID=>MC_FC_LOAD_VARIANT,
+*      CL_GUI_ALV_GRID=>MC_FC_LOC_COPY,          " 행 카피.
+*      CL_GUI_ALV_GRID=>MC_FC_HTML,
+      CL_GUI_ALV_GRID=>MC_FC_LOC_COPY_ROW,      " 행 카피.
+      CL_GUI_ALV_GRID=>MC_FC_LOC_CUT,           " 가위.
+      CL_GUI_ALV_GRID=>MC_FC_LOC_DELETE_ROW,    " 행삭제.
+      CL_GUI_ALV_GRID=>MC_FC_LOC_INSERT_ROW,    " 행삽입.
+      CL_GUI_ALV_GRID=>MC_FC_LOC_MOVE_ROW,
+      CL_GUI_ALV_GRID=>MC_FC_LOC_APPEND_ROW,    " 라인생성.
+      CL_GUI_ALV_GRID=>MC_FC_LOC_PASTE,         " 겹쳐쓰기.
+      CL_GUI_ALV_GRID=>MC_FC_LOC_PASTE_NEW_ROW, " 겹쳐쓰기.
+*      CL_GUI_ALV_GRID=>MC_FC_MAINTAIN_VARIANT,
+*      CL_GUI_ALV_GRID=>MC_FC_MAXIMUM,
+*      CL_GUI_ALV_GRID=>MC_FC_MINIMUM,
+*      CL_GUI_ALV_GRID=>MC_FC_PC_FILE,
+*      CL_GUI_ALV_GRID=>MC_FC_PRINT,
+*      CL_GUI_ALV_GRID=>MC_FC_PRINT_BACK,
+*      CL_GUI_ALV_GRID=>MC_FC_PRINT_PREV,
+      CL_GUI_ALV_GRID=>MC_FC_REFRESH,
+*      CL_GUI_ALV_GRID=>MC_FC_REPREP,
+*      CL_GUI_ALV_GRID=>MC_FC_SAVE_VARIANT,
+*      CL_GUI_ALV_GRID=>MC_FC_SELECT_ALL,
+*      CL_GUI_ALV_GRID=>MC_FC_SEND,
+*      CL_GUI_ALV_GRID=>MC_FC_SEPARATOR,
+*      CL_GUI_ALV_GRID=>MC_FC_SORT,
+*      CL_GUI_ALV_GRID=>MC_FC_SORT_ASC,
+*      CL_GUI_ALV_GRID=>MC_FC_SORT_DSC,
+*      CL_GUI_ALV_GRID=>MC_FC_SUBTOT,
+*      CL_GUI_ALV_GRID=>MC_MB_SUM,
+*      CL_GUI_ALV_GRID=>MC_FC_SUM,
+*      CL_GUI_ALV_GRID=>MC_FC_TO_OFFICE,
+*      CL_GUI_ALV_GRID=>MC_FC_TO_REP_TREE,
+*      CL_GUI_ALV_GRID=>MC_FC_UNFIX_COLUMNS,
+*      CL_GUI_ALV_GRID=>MC_FC_VIEWS,
+      CL_GUI_ALV_GRID=>MC_FC_VIEW_CRYSTAL.
+*      CL_GUI_ALV_GRID=>MC_FC_VIEW_EXCEL,
+*      CL_GUI_ALV_GRID=>MC_FC_VIEW_GRID.
+*      CL_GUI_ALV_GRID=>MC_FC_WORD_PROCESSOR.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_CREATE_OBJ_EVENT_RECV01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_CREATE_OBJ_EVENT_RECV01
+  USING
+    VALUE(P_ALV_GRID) TYPE REF TO CL_GUI_ALV_GRID
+  CHANGING
+    P_EVENT_RECEIVER TYPE REF TO LCL_EVENT_RECEIVER01.
+
+  CLEAR P_EVENT_RECEIVER.
+
+  CREATE OBJECT P_EVENT_RECEIVER.
+
+  SET HANDLER
+**   Context Menu
+*    P_EVENT_RECEIVER->HANDLE_CONTEXT_MENU01
+*   Toolbar-function code
+    P_EVENT_RECEIVER->HANDLE_TOOLBAR01
+*   User command
+    P_EVENT_RECEIVER->HANDLE_USER_COMMAND01
+*   Cell data changed
+    P_EVENT_RECEIVER->HANDLE_DATA_CHANGED01
+**   Cell data changed finished
+*    P_EVENT_RECEIVER->HANDLE_DATA_CHANGED_FINISHED01
+*   Double click
+    P_EVENT_RECEIVER->HANDLE_DOUBLE_CLICK01
+*   Hotspot click
+    P_EVENT_RECEIVER->HANDLE_HOTSPOT_CLICK01
+*   Button Click
+    P_EVENT_RECEIVER->HANDLE_BUTTON_CLICK01
+**   After user command
+*    P_EVENT_RECEIVER->HANDLE_AFTER_USER_COMMAND01
+*   After List Refresh
+    P_EVENT_RECEIVER->HANDLE_AFTER_REFRESH01
+**   On Value Request
+*    P_EVENT_RECEIVER->HANDLE_ONF401
+    FOR P_ALV_GRID.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_SET_FOR_INPUT01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_SET_FOR_INPUT01
+  USING
+    VALUE(P_ALV_GRID) TYPE REF TO CL_GUI_ALV_GRID.
+  DATA:
+    L_READY_FOR_INPUT TYPE INT4.
+
+  IF SCREEN_MODE EQ YSMP_CHANGE OR  "변경
+     SCREEN_MODE EQ YSMP_CREATE.    "생성
+    L_READY_FOR_INPUT = 1.
+  ENDIF.
+
+  CALL METHOD P_ALV_GRID->SET_READY_FOR_INPUT
+    EXPORTING
+      I_READY_FOR_INPUT = L_READY_FOR_INPUT.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_CELL_CONTROL01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_CELL_CONTROL01
+  TABLES
+    PT_LIST TYPE TY_T_LIST01.
+  DATA:
+    L_TABIX TYPE SY-TABIX.
+
+* 특정 셀 제어
+********************
+* <<공통수정부분>> *
+********************
+
+  CASE SCREEN_MODE.
+
+    WHEN YSMP_DISPLAY.  "조회
+      LOOP AT PT_LIST.
+        L_TABIX = SY-TABIX.
+
+        CLEAR:
+          PT_LIST-CELLSTYL,
+          PT_LIST-CELLSCOL.
+
+*        IF PT_LIST-DMGRO IS INITIAL.
+*          PERFORM ALV_CL_FILL_CELLSCOL(YEDSCOMA01)
+*            USING PT_LIST-CELLSCOL:
+*              'FNAME' '6' '0' '0'.
+*        ENDIF.
+
+        MODIFY PT_LIST INDEX L_TABIX
+          TRANSPORTING
+            CELLSTYL
+            CELLSCOL.
+
+        CLEAR:
+          PT_LIST.
+      ENDLOOP.
+
+    WHEN YSMP_CHANGE   "변경
+      OR YSMP_CREATE.  "생성
+      LOOP AT PT_LIST.
+        L_TABIX = SY-TABIX.
+
+        CLEAR:
+          PT_LIST-CELLSTYL,
+          PT_LIST-CELLSCOL.
+
+        CASE PT_LIST-RECTY.
+          WHEN YSMP_RECTY_E.  "기존
+*           변경/생성시 기존건만 입력가능
+
+          WHEN YSMP_RECTY_N.  "신규
+
+*           변경/생성시 신규건만 입력가능 : Primary key field
+            PERFORM ALV_CL_FILL_CELLSTYL(YEDSCOMA01)
+              USING PT_LIST-CELLSTYL:
+                'HSCOD' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED.
+
+        ENDCASE.
+
+*       변경/생성시 항상 입력가능 : Non key field
+*       변경가능시 항상 입력가능
+        PERFORM ALV_CL_FILL_CELLSTYL(YEDSCOMA01)
+          USING PT_LIST-CELLSTYL:
+            'HSTXT' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'HSKOR' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'DMGRO' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'EDDFL' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'DANCH' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'RSTRC' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'IMDTY' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'DTYGB' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'FDATE' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'TDATE' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED,
+            'DEL_YN_ICON' CL_GUI_ALV_GRID=>MC_STYLE_ENABLED.
+
+        MODIFY PT_LIST INDEX L_TABIX
+          TRANSPORTING
+            CELLSTYL
+            CELLSCOL.
+
+        CLEAR:
+          PT_LIST.
+      ENDLOOP.
+
+  ENDCASE.
+
+*  삭제 체크 된 건에 대해서는 셀 COLOR RED지정
+  LOOP AT PT_LIST.
+    L_TABIX = SY-TABIX.
+
+    CLEAR:
+      PT_LIST-CELLSTYL,
+      PT_LIST-CELLSCOL.
+
+    IF PT_LIST-DEL_YN EQ YSMP_DELFL_X.
+      PERFORM ALV_CL_FILL_CELLSCOL(YEDSCOMA01)
+        USING PT_LIST-CELLSCOL:
+          'STATU'       '6' '0' '0',
+          'STATU_ICON'  '6' '0' '0',
+          'STATU_MSG'   '6' '0' '0',
+          'HSCOD'       '6' '0' '0',
+          'HSTXT'       '6' '0' '0',
+          'HSKOR'       '6' '0' '0',
+          'DMGRO'       '6' '0' '0',
+          'DMTXT'       '6' '0' '0',
+          'EDDFL'       '6' '0' '0',
+          'DANCH'       '6' '0' '0',
+          'RSTRC'       '6' '0' '0',
+          'IMDTY'       '6' '0' '0',
+          'DTYGB'       '6' '0' '0',
+          'DTYGBT'      '6' '0' '0',
+          'FDATE'       '6' '0' '0',
+          'TDATE'       '6' '0' '0',
+          'DEL_YN'      '6' '0' '0',
+          'DEL_YN_ICON' '6' '0' '0',
+          'CRDAT'       '6' '0' '0',
+          'CRTIM'       '6' '0' '0',
+          'CRNAM'       '6' '0' '0',
+          'CHDAT'       '6' '0' '0',
+          'CHTIM'       '6' '0' '0',
+          'CHNAM'       '6' '0' '0'.
+    ENDIF.
+
+    MODIFY PT_LIST INDEX L_TABIX
+      TRANSPORTING
+        CELLSCOL.
+
+    CLEAR:
+      PT_LIST.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_SORT01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_SORT01
+  CHANGING
+    PT_SORT TYPE LVC_T_SORT.
+*  DATA:
+*    LS_SORT TYPE LVC_S_SORT.
+
+*  CLEAR PT_SORT.
+
+*   PERFORM ALV_CL_APPEND_SORT(YEDSCOMA01)
+*    TABLES
+*      PT_SORT
+*    USING:
+*      'FNAME' 'X' '' ''.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_FIELDCATALOG_MERGE01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_FIELDCATALOG_MERGE01
+  USING
+    VALUE(P_ALV_STRUNAME)
+  CHANGING
+    PT_FDCAT TYPE LVC_T_FCAT.
+  DATA:
+    L_TABIX     TYPE SY-TABIX,
+    LS_FDCAT    TYPE LVC_S_FCAT,
+    L_ALVBUFFER TYPE CHAR11.
+
+* ALV BUFFER Init
+  L_ALVBUFFER = 'BFOFF EUOFF'.
+  SET PARAMETER ID 'ALVBUFFER' FIELD L_ALVBUFFER.
+
+  CLEAR PT_FDCAT.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      I_BUFFER_ACTIVE    = 'X'
+      I_BYPASSING_BUFFER = 'X'
+      I_STRUCTURE_NAME   = P_ALV_STRUNAME
+      I_INTERNAL_TABNAME = P_ALV_STRUNAME
+    CHANGING
+      CT_FIELDCAT        = PT_FDCAT.
+
+  LOOP AT PT_FDCAT INTO LS_FDCAT.
+    L_TABIX = SY-TABIX.
+
+    LS_FDCAT-KEY = SPACE.
+    LS_FDCAT-FIX_COLUMN = SPACE.
+    LS_FDCAT-NO_OUT = SPACE.
+
+*   컬럼색상
+    CASE LS_FDCAT-FIELDNAME.
+********************
+* <<공통수정부분>> *
+********************
+      WHEN 'HSCOD'.
+        LS_FDCAT-EMPHASIZE = 'C410'.
+    ENDCASE.
+
+*   고정컬럼설정
+    CASE LS_FDCAT-FIELDNAME.
+********************
+* <<공통수정부분>> *
+********************
+      WHEN 'STATU'
+        OR 'STATU_ICON'
+        OR 'STATU_MSG'
+        OR 'HSCOD'
+        OR 'HSTXT'.
+        LS_FDCAT-FIX_COLUMN = 'X'.
+    ENDCASE.
+
+*   숨김컬럼설정
+    CASE LS_FDCAT-FIELDNAME.
+      WHEN 'STATU'
+        OR 'DEL_YN'.
+        LS_FDCAT-NO_OUT = 'X'.
+    ENDCASE.
+
+*   완전숨김컬럼설정
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.
+*        LS_FDCAT-TECH = 'X'.
+*    ENDCASE.
+
+*   아이콘 필드명 변경
+    CASE LS_FDCAT-FIELDNAME.
+      WHEN 'DEL_YN_ICON'.
+        LS_FDCAT-COLTEXT = '삭제여부'.
+        LS_FDCAT-ICON = 'X'.
+    ENDCASE.
+
+    IF SCREEN_MODE EQ YSMP_DISPLAY.
+      CASE LS_FDCAT-FIELDNAME.
+        WHEN 'STATU_ICON'
+          OR 'STATU_MSG'.
+          LS_FDCAT-NO_OUT = 'X'.
+      ENDCASE.
+    ENDIF.
+
+*   정렬
+********************
+* <<공통수정부분>> *
+********************
+    CASE LS_FDCAT-FIELDNAME.
+      WHEN 'DMGRO'
+        OR 'EDDFL'
+        OR 'DANCH'
+        OR 'RSTRC'
+        OR 'IMDTY'
+        OR 'DTYGB'
+        OR 'FDATE'
+        OR 'TDATE'
+        OR 'DEL_YN'
+        OR 'DEL_YN_ICON'.
+        LS_FDCAT-JUST = 'C'.
+    ENDCASE.
+
+*   Hotspot
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.
+*        LS_FDCAT-HOTSPOT = 'C'.
+*    ENDCASE.
+
+*   합계컬럼설정
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.
+*        LS_FDCAT-DO_SUM = 'X'.
+*    ENDCASE.
+
+*   아이콘컬럼설정
+    IF LS_FDCAT-FIELDNAME CP 'ICON_*' OR
+       LS_FDCAT-FIELDNAME CP '*_ICON'.
+      LS_FDCAT-ICON = 'X'.
+*    ELSE.
+*      CASE LS_FDCAT-FIELDNAME.
+*        WHEN 'FNAME'.
+*          LS_FDCAT-ICON = 'X'.
+*      ENDCASE.
+    ENDIF.
+
+*   버튼컬럼설정
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.
+*        LS_FDCAT-STYLE = CL_GUI_ALV_GRID=>MC_STYLE_BUTTON.
+*    ENDCASE.
+
+*   체크박스컬럼설정
+    PERFORM ALV_CL_FIELDCAT_SET_CHECKBOX(YEDSCOMA01)
+      CHANGING
+         LS_FDCAT.
+
+*   Dropdown Listbox설정
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.
+*        LS_FDCAT-DRDN_HNDL = '1'.
+*        LS_FDCAT-DRDN_ALIAS = 'X'.
+*    ENDCASE.
+
+*   통화키설정
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.
+*        LS_FDCAT-CURRENCY      = C_WAERS_KRW.
+*        LS_FIELDCAT-CFIELDNAME    = 'WAERKS'.
+*    ENDCASE.
+
+*   수량단위설정
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.
+*        LS_FDCAT-QUANTITY      = YSMP_MEINS_EQ.
+*        LS_FIELDCAT-QFIELDNAME    = 'MEINS'.
+*    ENDCASE.
+
+*   초기값제거
+    CASE LS_FDCAT-DATATYPE.
+      WHEN 'DEC'
+        OR 'INT2'
+        OR 'INT4'
+        OR 'CURR'
+        OR 'QUAN'
+        OR 'DATS'
+        OR 'TIMS'.
+        LS_FDCAT-NO_ZERO = 'X'.
+    ENDCASE.
+
+*   컬럼명설정
+*   Data element를 지정하지 않아 필드내역(DD03T)을 사용해야 하는 필드
+    IF LS_FDCAT-REPTEXT IS INITIAL OR
+       LS_FDCAT-SCRTEXT_S IS INITIAL OR
+       LS_FDCAT-SCRTEXT_M IS INITIAL OR
+       LS_FDCAT-SCRTEXT_L IS INITIAL.
+      PERFORM ALV_CL_FIELDCAT_SET_FIELDTEXT(YEDSCOMA01)
+        CHANGING
+          LS_FDCAT.
+    ENDIF.
+
+*   컬럼명을 변경할 필드만
+*    CASE LS_FDCAT-FIELDNAME.
+*      WHEN 'FNAME'.  "
+*        LS_FDCAT-SCRTEXT_S =
+*        LS_FDCAT-SCRTEXT_M =
+*        LS_FDCAT-SCRTEXT_L =
+*        LS_FDCAT-COLTEXT =
+*        LS_FDCAT-SELTEXT =
+*        LS_FDCAT-REPTEXT = ''.
+*    ENDCASE.
+
+    MODIFY PT_FDCAT FROM LS_FDCAT
+      INDEX L_TABIX.
+
+    CLEAR:
+      LS_FDCAT.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_APPEND_FILTER
+*&---------------------------------------------------------------------*
+FORM ALV_CL_APPEND_FILTER
+  TABLES
+    PR_SEL_OPT
+  USING
+    VALUE(P_FIELDNAME)
+  CHANGING
+    PT_FILT TYPE LVC_T_FILT.
+  DATA:
+    LS_FILT TYPE LVC_S_FILT.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_DROPDOWN_LISTBOX01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_DROPDOWN_LISTBOX01
+  USING
+    VALUE(P_ALV_GRID) TYPE REF TO CL_GUI_ALV_GRID.
+  DATA: BEGIN OF LT_DD07T OCCURS 0,
+          DOMVALUE_L TYPE DD07T-DOMVALUE_L,
+          DDTEXT     TYPE DD07T-DDTEXT,
+        END OF LT_DD07T.
+  CHECK SY-BATCH IS INITIAL.
+
+  DATA:
+*    LT_DROP TYPE LVC_T_DROP WITH HEADER LINE,
+    LT_DRAL TYPE LVC_T_DRAL WITH HEADER LINE.
+
+* 자재범주 고정값 => Dropdown Listbox
+  SELECT
+    DOMVALUE_L
+    DDTEXT
+    FROM DD07T
+    INTO TABLE LT_DD07T
+    WHERE DOMNAME    EQ 'DMGRO'
+    AND   DDLANGUAGE EQ SY-LANGU
+    AND   AS4LOCAL   EQ 'A'
+    ORDER BY
+      VALPOS ASCENDING.
+
+  LOOP AT LT_DD07T.
+    LT_DRAL-HANDLE = '1'.
+    LT_DRAL-INT_VALUE = LT_DD07T-DOMVALUE_L.
+
+    IF LT_DD07T-DOMVALUE_L IS INITIAL.
+      CONCATENATE
+        '　　'
+        LT_DD07T-DDTEXT
+        INTO LT_DRAL-VALUE.
+    ELSE.
+      CONCATENATE
+        LT_DD07T-DOMVALUE_L
+        ':'
+        LT_DD07T-DDTEXT
+        INTO LT_DRAL-VALUE SEPARATED BY SPACE.
+    ENDIF.
+
+    APPEND LT_DRAL.
+    CLEAR LT_DRAL.
+
+    CLEAR LT_DD07T.
+  ENDLOOP.
+
+  CALL METHOD P_ALV_GRID->SET_DROP_DOWN_TABLE
+    EXPORTING
+*     IT_DROP_DOWN       = LT_DROP
+      IT_DROP_DOWN_ALIAS = LT_DRAL[].
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_SET_FOR_FIRST_DISPLAY01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_SET_FOR_FIRST_DISPLAY01.
+
+  CALL METHOD G_ALV_GRID01->SET_TABLE_FOR_FIRST_DISPLAY
+    EXPORTING
+      I_BUFFER_ACTIVE      = 'X'
+      I_BYPASSING_BUFFER   = 'X'
+*     I_STRUCTURE_NAME     = ' '
+      IS_LAYOUT            = GS_LAYOUT01
+      IS_VARIANT           = GS_VARIANT01
+      I_SAVE               = 'A'
+      IT_TOOLBAR_EXCLUDING = GT_EXFCD01
+    CHANGING
+      IT_FIELDCATALOG      = GT_FDCAT01
+      IT_SORT              = GT_SORT01
+      IT_OUTTAB            = GT_LIST01[].
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_TOOLBAR01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_TOOLBAR01
+  USING
+    P_OBJECT TYPE REF TO CL_ALV_EVENT_TOOLBAR_SET
+    P_INTERACTIVE.
+  DATA:
+    L_DISABLED TYPE STB_BUTTON-DISABLED.
+
+*  조회모드일 때 비활성화할 툴바 L_DISABLED로 설정
+  IF SCREEN_MODE EQ YSMP_DISPLAY.
+    L_DISABLED = YSMP_X.
+  ENDIF.
+
+* 버튼유형 추가
+  PERFORM ALV_CL_APPEND_TOOLBAR_BUTTON(YEDSCOMA01)
+    TABLES
+      P_OBJECT->MT_TOOLBAR:
+    USING
+      '' '' '' '3' '' '' '',                  "분리자  ???
+    USING
+      'COPY_ROWS'                             "행복사
+      ICON_COPY_OBJECT
+      '행복사'
+      '0'
+      L_DISABLED
+      ''
+      '',
+    USING
+      'INSE_ROWS'                             "행삽입
+      ICON_INSERT_ROW
+      '행삽입'
+      '0'
+      L_DISABLED
+      ''
+      '',
+    USING
+      'APPE_ROWS'                             "행추가
+      ICON_CREATE
+      '행추가'
+      '0'
+      L_DISABLED
+      ''
+      '',
+    USING
+      'DELE_ROWS'                             "행삭제
+      ICON_DELETE_ROW
+      '행삭제'
+      '0'
+      L_DISABLED
+      ''
+      '',
+    USING
+      'RETR_ROWS'                             "행복구
+      ICON_SYSTEM_UNDO
+      '행복구'
+      '0'
+      L_DISABLED
+      ''
+      '',
+    USING
+      '' '' '' '3' '' '' '',                  "분리자
+    USING
+      'CHK_VALID'                             "유효성점검
+      ICON_AVAILABILITY_CHECK
+      '유효성점검'
+      '0'
+      L_DISABLED
+      '유효성점검'
+      '',
+    USING
+      '' '' '' '3' '' '' '',                  "분리자
+    USING
+      'DELE_DATA'                             "삭제
+      ICON_DELETE
+      '삭제'
+      '0'
+      L_DISABLED
+      '삭제'
+      '',
+    USING
+      'CANC_DELE'                             "삭제취소
+      ICON_SYSTEM_UNDO
+      '삭제취소'
+      '0'
+      L_DISABLED
+      '삭제취소'
+      ''.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_USER_COMMAND01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_USER_COMMAND01
+  USING
+    P_UCOMM TYPE SY-UCOMM.
+
+  CASE P_UCOMM.
+
+    WHEN 'COPY_ROWS'.  "행복사
+      PERFORM ALV_CL_COPY_ROWS_PROCESS01.
+
+    WHEN 'INSE_ROWS'.  "행삽입
+      PERFORM ALV_CL_INSERT_ROWS_PROCESS01.
+
+    WHEN 'APPE_ROWS'.  "행추가
+      PERFORM ALV_CL_APPEND_ROWS_PROCESS01.
+
+    WHEN 'DELE_ROWS'.  "행삭제
+      PERFORM ALV_CL_DELETE_ROWS_PROCESS01.
+
+    WHEN 'RETR_ROWS'.  "행복구
+      PERFORM ALV_CL_RETRIEVE_ROWS_PROCESS01.
+
+    WHEN 'CHK_VALID'.  "유효성점검
+      PERFORM ALV_CL_CHECK_VALDTY_PROCESS01.
+
+    WHEN 'DELE_DATA'.   " 삭제
+      PERFORM DELETE_DATA_PROCESS.
+
+    WHEN 'CANC_DELE'.   " 삭제취소
+      PERFORM CANCEL_DELETE_DATA_PROCESS.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_COPY_ROWS_PROCESS01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_COPY_ROWS_PROCESS01.
+  DATA:
+    LT_ROWS     TYPE LVC_T_ROW WITH HEADER LINE,
+    L_INDEX     TYPE LVC_INDEX,
+    LT_LIST_OLD TYPE TY_T_LIST01.
+
+* 라인 선택->LT_ROWS에 INDEX 값으로 저장
+  PERFORM ALV_CL_GET_SELECTED_ROWS
+    TABLES
+      LT_ROWS
+    USING
+      G_ALV_GRID01.
+
+  IF LT_ROWS[] IS INITIAL.
+    MESSAGE S013  DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+* ALV REFRESH를 위해 변경 여부를 비교할 리스트 데이터 백업
+  LT_LIST_OLD[] = GT_LIST01[].
+
+*  선택 라인 복사
+  PERFORM ALV_CL_COPY_ROWS_PROCESS
+    TABLES
+      GT_INDEX_ROWS01
+      LT_ROWS.
+
+*  리스트 갱신
+  IF GT_LIST01[] EQ LT_LIST_OLD[].
+    RETURN.
+  ELSE.
+    PERFORM ALV_CL_REFRESH_OBJECT01.
+  ENDIF.
+
+*  커서가 위치할 INDEX 번호
+*  선택한 행 중 첫번째 행에 Cursor가 오도록 함
+  READ TABLE LT_ROWS INDEX 1.
+  CHECK SY-SUBRC EQ 0.
+  L_INDEX = LT_ROWS-INDEX.
+
+*  CELL CURSOR 위치 설정
+  PERFORM ALV_CL_SET_CURRENT_CELL_VIA_ID
+    USING
+      G_ALV_GRID01
+      ' '
+      L_INDEX.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_INSERT_ROWS_PROCESS01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_INSERT_ROWS_PROCESS01.
+  DATA:
+    LT_ROWS     TYPE LVC_T_ROW WITH HEADER LINE,
+    L_INDEX     TYPE LVC_INDEX,
+    LT_LIST_OLD TYPE TY_T_LIST01.
+
+* 라인 선택
+  PERFORM ALV_CL_GET_SELECTED_ROWS
+    TABLES
+      LT_ROWS
+    USING
+      G_ALV_GRID01.
+
+  IF LT_ROWS[] IS INITIAL.
+    MESSAGE S013  DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+* ALV REFRESH를 위해 변경 여부를 비교할 리스트 데이터 백업
+  LT_LIST_OLD[] = GT_LIST01[].
+
+* 선택 라인에 빈 라인 삽입
+  PERFORM ALV_CL_INSERT_ROWS_PROCESS
+    TABLES
+      GT_INDEX_ROWS01
+      LT_ROWS.
+
+*  리스트 갱신
+  IF GT_LIST01[] EQ LT_LIST_OLD[].
+    RETURN.
+  ELSE.
+    PERFORM ALV_CL_REFRESH_OBJECT01.
+  ENDIF.
+
+*  커서가 위치할 INDEX 번호
+*  선택한 행 중 첫번째 행에 Cursor가 오도록 함
+  READ TABLE LT_ROWS INDEX 1.
+  CHECK SY-SUBRC EQ 0.
+  L_INDEX = LT_ROWS-INDEX.
+
+*  CELL CURSOR 위치 설정
+  PERFORM ALV_CL_SET_CURRENT_CELL_VIA_ID
+    USING
+      G_ALV_GRID01
+      ' '
+      L_INDEX.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_APPEND_ROWS_PROCESS01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_APPEND_ROWS_PROCESS01.
+  DATA:
+    L_INDEX1    TYPE LVC_INDEX,
+    L_INDEX2    TYPE LVC_INDEX,
+    LT_LIST_OLD TYPE TY_T_LIST01.
+
+* ALV REFRESH를 위해 변경 여부를 비교할 리스트 데이터 백업
+  LT_LIST_OLD[] = GT_LIST01[].
+
+* 커서가 위치할 INDEX 번호
+  L_INDEX1 = LINES( GT_LIST01 ) + 1.
+
+*  리스트 마지막 라인 아래에 빈 라인 추가
+  PERFORM ALV_CL_APPEND_ROWS_PROCESS.
+
+*  리스트 갱신
+  IF GT_LIST01[] EQ LT_LIST_OLD[].
+    RETURN.
+  ELSE.
+    PERFORM ALV_CL_REFRESH_OBJECT01.
+  ENDIF.
+
+* 마지막 라인
+  L_INDEX2 = LINES( GT_LIST01 ).
+
+* 추가된 행이 최대한 보이도록 Cursor의 위치를 마지막행까지 보냈다가
+* 추가된 행의 제일 첫 행으로 옮겨 지도록 함
+
+* Cell Cursor 위치 설정
+  PERFORM ALV_CL_SET_CURRENT_CELL_VIA_ID
+    USING
+      G_ALV_GRID01
+      ' ':
+      L_INDEX2,     "마지막라인
+      L_INDEX1.     "추가건의 첫행
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_DELETE_ROWS_PROCESS01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_DELETE_ROWS_PROCESS01.
+  DATA:
+    LT_ROWS     TYPE LVC_T_ROW WITH HEADER LINE,
+    L_INDEX     TYPE LVC_INDEX,
+    LS_LIST     TYPE TY_S_LIST01,
+    LT_LIST_OLD TYPE TY_T_LIST01.
+
+* 라인 선택
+  PERFORM ALV_CL_GET_SELECTED_ROWS
+    TABLES
+      LT_ROWS
+    USING
+      G_ALV_GRID01.
+
+  IF LT_ROWS[] IS INITIAL.
+    MESSAGE S013  DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+* ALV REFRESH를 위해 변경 여부를 비교할 리스트 데이터 백업
+  LT_LIST_OLD[] = GT_LIST01[].
+
+*  선택 라인 삭제
+  PERFORM ALV_CL_DELETE_ROWS_PROCESS
+    TABLES
+      LT_ROWS.
+
+*  리스트 갱신
+  IF GT_LIST01[] EQ LT_LIST_OLD[].
+    RETURN.
+  ELSE.
+    PERFORM ALV_CL_REFRESH_OBJECT01.
+  ENDIF.
+
+*  커서가 위치할 INDEX 번호
+  READ TABLE LT_ROWS INDEX 1.
+  CHECK SY-SUBRC EQ 0.
+  L_INDEX = LT_ROWS-INDEX - '1'.
+
+  IF L_INDEX IS INITIAL.
+    L_INDEX = '1'.
+  ENDIF.
+
+* Cell Cursor 위치 설정
+  PERFORM ALV_CL_SET_CURRENT_CELL_VIA_ID
+    USING
+      G_ALV_GRID01
+      ' '
+      L_INDEX.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_RETRIEVE_ROWS_PROCESS01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_RETRIEVE_ROWS_PROCESS01.
+  DATA:
+    L_INDEX1    TYPE LVC_INDEX,
+    L_INDEX2    TYPE LVC_INDEX,
+    LT_LIST_OLD TYPE TY_T_LIST01.
+
+  IF GT_LIST01_DL[] IS INITIAL.
+    MESSAGE S050.
+    RETURN.
+  ENDIF.
+
+* ALV REFRESH를 위해 변경 여부를 비교할 리스트 데이터 백업
+  LT_LIST_OLD[] = GT_LIST01[].
+
+* 커서가 위치할 Index 번호
+* 삭제된 데이터가 추가되기 전의 행의 수를 보관하여
+* Cursor의 위치가 복구전의 마지막 행에 오도록 함
+  L_INDEX1 = LINES( GT_LIST01 ).
+
+*  ALV POPUP 삭제 리스트 조회
+  PERFORM ALV_FC_POPUP_DISPLAY_LIST01_DL.
+
+*  리스트 갱신
+  IF GT_LIST01[] EQ LT_LIST_OLD[].
+    RETURN.
+  ELSE.
+    PERFORM ALV_CL_REFRESH_OBJECT01.
+  ENDIF.
+
+* 마지막라인
+  L_INDEX2 = LINES( GT_LIST01 ).
+
+* 추가된 행이 최대한 보이도록 Cursor의 위치를 마지막행까지 보냈다가
+* 추가된 행의 제일 첫 행으로 옮겨 지도록 함
+
+* Cell Cursor 위치 설정
+  PERFORM ALV_CL_SET_CURRENT_CELL_VIA_ID
+    USING
+      G_ALV_GRID01
+      ' ':
+      L_INDEX2,     "마지막라인
+      L_INDEX1.     "추가건의 첫행
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_CHECK_VALDTY_PROCESS01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_CHECK_VALDTY_PROCESS01.
+  DATA:
+    L_ERROR     TYPE ZDDSCHARX,
+    L_INDEX1    TYPE LVC_INDEX,
+    L_INDEX2    TYPE LVC_INDEX,
+    LT_LIST_OLD TYPE TY_T_LIST01.
+
+  IF GT_LIST01[] IS INITIAL.
+    MESSAGE S075.
+    RETURN.
+  ENDIF.
+
+* ALV REFRESH를 위해 변경 여부를 비교할 리스트 데이터 백업
+  LT_LIST_OLD[] = GT_LIST01[].
+
+*  유효성 점검
+  PERFORM CHECK_LIST_DATA_VALID
+    USING
+     'CHK_VALID'  "구분자
+    CHANGING
+      L_ERROR.
+
+* 오류여부에 따라 메세지 처리
+  IF L_ERROR EQ YSMP_X.
+    MESSAGE S077 DISPLAY LIKE 'E'.
+
+    READ TABLE GT_LIST01
+      WITH KEY
+        STATU = YSMP_STATU_E  "오류
+      TRANSPORTING NO FIELDS.
+
+    IF SY-SUBRC EQ 0.
+*     첫번째오류라인
+      L_INDEX1 = SY-TABIX.
+    ENDIF.
+  ELSE.
+    MESSAGE S076.
+  ENDIF.
+
+*  리스트 갱신
+  IF GT_LIST01[] NE LT_LIST_OLD[].
+    PERFORM ALV_CL_REFRESH_OBJECT01.
+  ENDIF.
+
+* 커서가 위치할 Index 번호
+  CHECK L_INDEX1 IS NOT INITIAL.
+
+* 마지막라인
+  L_INDEX2 = LINES( GT_LIST01 ).
+
+* 오류 행이 최대한 보이도록 Cursor의 위치를 마지막행까지 보냈다가
+* 제일 첫 오류 행으로 옮겨 지도록 함
+
+* Cell Cursor 위치 설정
+  PERFORM ALV_CL_SET_CURRENT_CELL_VIA_ID
+    USING
+      G_ALV_GRID01
+      ' ':
+      L_INDEX2,     "마지막라인
+      L_INDEX1.     "첫번째오류라인
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_DATA_CHANGED01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_DATA_CHANGED01
+  USING
+    PR_DATA_CHANGED TYPE REF TO CL_ALV_CHANGED_DATA_PROTOCOL
+    P_ONF4
+    P_ONF4_BEFORE
+    P_ONF4_AFTER.
+  DATA:
+    LT_GOOD_CELLS      TYPE LVC_T_MODI WITH HEADER LINE,
+    LS_LIST_OLD        TYPE TY_S_LIST01,
+    LS_LIST_NEW        TYPE TY_S_LIST01,
+    L_AT_END_OF_ROW_ID,
+    LT_LIST_OLD        TYPE TY_T_LIST01.
+  FIELD-SYMBOLS:
+    <LFS_FIELDVALUE> TYPE ANY.
+
+* ALV REFRESH를 위해 변경 여부를 비교할 리스트 데이터 백업
+  LT_LIST_OLD[] = GT_LIST01[].
+
+  LT_GOOD_CELLS[] = PR_DATA_CHANGED->MT_GOOD_CELLS[].
+
+  LOOP AT LT_GOOD_CELLS.
+
+    AT NEW ROW_ID.
+      READ TABLE GT_LIST01 INDEX LT_GOOD_CELLS-ROW_ID
+        INTO LS_LIST_OLD.
+
+*     변경 이전의 필드값 -> 업로드용 리스트
+      MOVE-CORRESPONDING LS_LIST_OLD TO LS_LIST_NEW.
+*     상태 관련값 초기화
+      LS_LIST_NEW-STATU = YSMP_MSGTY_S.
+
+      CLEAR:
+        LS_LIST_NEW-STATU_ICON,
+        LS_LIST_NEW-STATU_MSG.
+    ENDAT.
+
+*   변경된 필드
+    ASSIGN COMPONENT LT_GOOD_CELLS-FIELDNAME
+      OF STRUCTURE LS_LIST_NEW TO <LFS_FIELDVALUE>.
+
+*   변경된 필드(셀) 값
+    PERFORM ALV_CL_GET_CELL_VALUE(YEDSCOMA01)
+      USING
+        PR_DATA_CHANGED
+        LT_GOOD_CELLS-ROW_ID
+        LT_GOOD_CELLS-FIELDNAME
+      CHANGING
+        <LFS_FIELDVALUE>.
+
+*   한 ROW의 마지막 변경 컬럼에서
+    AT END OF ROW_ID.
+      L_AT_END_OF_ROW_ID = YSMP_X.
+    ENDAT.
+
+    IF L_AT_END_OF_ROW_ID EQ YSMP_X.
+*     유효성 점검
+      PERFORM CHECK_FIELDS_VALUE_VALID01
+        USING
+          LT_GOOD_CELLS-ROW_ID
+        CHANGING
+          LS_LIST_NEW.
+
+*     셀값 변경
+      PERFORM ALV_CL_MODIFY_CELLS_VALUE01
+        USING
+          PR_DATA_CHANGED
+          LT_GOOD_CELLS-ROW_ID
+          LS_LIST_OLD
+          LS_LIST_NEW.
+
+*     상태
+      PERFORM ALV_CL_MODIFY_CELL(YEDSCOMA01)
+        USING
+          PR_DATA_CHANGED
+          LT_GOOD_CELLS-ROW_ID
+          LS_LIST_NEW:
+          'STATU',              "상태
+          'STATU_ICON',         "상태아이콘
+          'STATU_MSG'.          "상태메세지
+
+      MODIFY GT_LIST01 FROM LS_LIST_NEW
+        INDEX LT_GOOD_CELLS-ROW_ID.
+
+      CLEAR:
+        L_AT_END_OF_ROW_ID,
+        LS_LIST_OLD,
+        LS_LIST_NEW.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_CHANGED_FINISHED01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_CHANGED_FINISHED01
+  USING
+    P_MODIFIED
+    PT_GOOD_CELLS TYPE LVC_T_MODI.
+  DATA:
+    L_TABIX       TYPE SY-TABIX,
+    LS_GOOD_CELLS TYPE LVC_S_MODI.
+
+  CHECK P_MODIFIED EQ YSMP_X.
+
+* Refresh ALV Objects
+  PERFORM ALV_CL_REFRESH_OBJECT01.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_MODIFY_CELLS_VALUE01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_MODIFY_CELLS_VALUE01
+  USING
+    PR_DATA_CHANGED TYPE REF TO CL_ALV_CHANGED_DATA_PROTOCOL
+    P_ROW_ID
+    PS_LIST_OLD TYPE TY_S_LIST01
+    PS_LIST_NEW TYPE TY_S_LIST01.
+
+********************
+* <<공통수정부분>> *
+********************
+*--------------------------------------------*
+* Primary key field에 대한 텍스트 셀 갱신
+*--------------------------------------------*
+
+*--------------------------------------------*
+* Non key field에 대한 텍스트 셀 갱신
+*--------------------------------------------*
+* 환급자재그룹명
+  IF PS_LIST_NEW-DMGRO NE PS_LIST_OLD-DMGRO.
+*  셀 값 갱신
+    PERFORM ALV_CL_MODIFY_CELL
+      USING
+        PR_DATA_CHANGED
+        P_ROW_ID
+        PS_LIST_NEW:
+        'DMTXT'.      "환급자재그룹명
+  ENDIF.
+
+* HS코드명
+  IF PS_LIST_NEW-HSCOD NE PS_LIST_OLD-HSCOD.
+*  셀 값 갱신
+    PERFORM ALV_CL_MODIFY_CELL
+      USING
+        PR_DATA_CHANGED
+        P_ROW_ID
+        PS_LIST_NEW:
+        'HSTXT'.      "HS코드명
+  ENDIF.
+
+* HS코드한글
+  IF PS_LIST_NEW-HSCOD NE PS_LIST_OLD-HSCOD.
+*  셀 값 갱신
+    PERFORM ALV_CL_MODIFY_CELL
+      USING
+        PR_DATA_CHANGED
+        P_ROW_ID
+        PS_LIST_NEW:
+        'HSKOR'.      "HS코드한글
+  ENDIF.
+
+* 부과금제품구분
+  IF PS_LIST_NEW-DTYGB NE PS_LIST_OLD-DTYGB.
+*  셀 값 갱신
+    PERFORM ALV_CL_MODIFY_CELL
+      USING
+        PR_DATA_CHANGED
+        P_ROW_ID
+        PS_LIST_NEW:
+        'DTYGBT'.      "부과금제품구분
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_DOUBLE_CLICK01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_DOUBLE_CLICK01
+  USING
+    PS_ROW TYPE LVC_S_ROW
+    PS_COL TYPE LVC_S_COL
+    PS_ROW_NO TYPE LVC_S_ROID.
+  DATA:
+    L_NOT_FOUND,
+    LS_LIST TYPE TY_S_LIST01.
+
+  READ TABLE GT_LIST01 INTO LS_LIST
+    INDEX PS_ROW-INDEX.
+  IF SY-SUBRC NE 0.
+    MESSAGE S046.
+    RETURN.
+  ENDIF.
+
+* 필드별로 특별히 적용할 더블클릭 기능을 먼저 실행할 수 있도록 하고
+* 공통 더블클릭 기능을 사용함
+  CASE PS_COL-FIELDNAME.
+
+    WHEN ' '.
+
+    WHEN OTHERS.
+*     공용 Double click
+      PERFORM DOUBLE_CLICK_COM(YEDSCOMF01)
+        USING
+          C_ALV_STRUNAME01
+          PS_COL-FIELDNAME
+          LS_LIST
+        CHANGING
+          L_NOT_FOUND.
+
+      IF L_NOT_FOUND EQ YSMP_X.
+        MESSAGE S046.
+      ENDIF.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_HOTSPOT_CLICK01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_HOTSPOT_CLICK01
+  USING
+    PS_ROW TYPE LVC_S_ROW
+    PS_COL TYPE LVC_S_COL.
+  DATA:
+    L_NOT_FOUND,
+    LS_LIST TYPE TY_S_LIST01.
+
+  READ TABLE GT_LIST01 INTO LS_LIST
+    INDEX PS_ROW-INDEX.
+  IF SY-SUBRC NE 0.
+    MESSAGE S046.
+    RETURN.
+  ENDIF.
+
+* 필드별로 특별히 적용할 더블클릭 기능을 먼저 실행할 수 있도록 하고
+* 공통 더블클릭 기능을 사용함
+  CASE PS_COL-FIELDNAME.
+
+    WHEN ' '.
+
+    WHEN OTHERS.
+*     공용 Double click
+      PERFORM DOUBLE_CLICK_COM(YEDSCOMF01)
+        USING
+          C_ALV_STRUNAME01
+          PS_COL-FIELDNAME
+          LS_LIST
+        CHANGING
+          L_NOT_FOUND.
+
+      IF L_NOT_FOUND EQ YSMP_X.
+        MESSAGE S046.
+      ENDIF.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_AFTER_USER_COMMAND01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_AFTER_USER_COMMAND01
+  USING
+    P_UCOMM TYPE SY-UCOMM.
+*  DATA:
+*    L_TOTALLINE(15),
+*    L_TOTALINE  TYPE SY-TABIX,
+*    L_FILELINE  TYPE SY-TABIX,
+*    LT_FIDX     TYPE LVC_T_FIDX.
+
+** 제목
+*  DESCRIBE TABLE GT_LIST01 LINES L_TOTALLINE.
+*  CONDENSE L_TOTALLINE.
+*
+*  SET TITLEBAR '0100' WITH
+*    SCREEN_MODE
+*    L_TOTALLINE.
+
+
+*  CASE P_UCOMM.
+*
+*    WHEN '&MB_FILTER'
+*      OR '&FILTER'
+*      OR '&DELETE_FILTER'.
+*      CALL METHOD G_ALV_GRID01->GET_FILTERED_ENTRIES
+*        IMPORTING
+*          ET_FILTERED_ENTRIES =   LT_FIDX.
+*
+**      DESCRIBE TABLE GT_LIST01 LINES G_FILELINE.
+**      DESCRIBE TABLE LT_FIDX LINES L_FILELINE.
+**      G_FILELINE = G_FILELINE - L_FILELINE.
+**      CONDENSE G_FILELINE.
+**      PERFORM STATUS_0100.
+*
+*  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_BUTTON_CLICK01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_BUTTON_CLICK01
+  USING
+    PS_COL_ID TYPE LVC_S_COL
+    PS_ROW_NO TYPE LVC_S_ROID.
+  MESSAGE I000 WITH
+    '버튼을 클릭했습니다.'.
+
+*  CASE PS_COL_ID-FIELDNAME.
+
+*    WHEN 'BUTN'.
+*        PERFORM ALV_CL_CELL_CONTROL.
+*        PERFORM ALV_CL_REFRESH_TABLE_DISPLAY
+*          USING
+*            G_ALV_GRID
+*            G_REC_STABLE.
+*      ENDIF.
+*
+*    WHEN OTHERS.
+*      MESSAGE S051.
+*
+*  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_AFTER_REFRESH01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_AFTER_REFRESH01.
+
+  IF GT_INDEX_ROWS01 IS NOT INITIAL.
+*    라인 선택되어 보이도록
+    PERFORM ALV_CL_SET_SELECTED_ROWS(YEDSCOMA01)
+      TABLES
+        GT_INDEX_ROWS01
+      USING
+        G_ALV_GRID01.
+
+    CLEAR GT_INDEX_ROWS01.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_ONF401
+*&---------------------------------------------------------------------*
+FORM ALV_CL_ONF401
+  USING
+    P_FIELDNAME TYPE LVC_FNAME
+    P_FIELDVALUE TYPE LVC_VALUE
+    PS_ROW_NO TYPE LVC_S_ROID
+    PR_EVENT_DATA TYPE REF TO CL_ALV_EVENT_DATA
+    PT_BAD_CELLS TYPE LVC_T_MODI
+    P_DISPLAY.
+*  DATA:
+*    LS_MODI  TYPE LVC_S_MODI,
+*    L_ROW_ID TYPE LVC_S_ROID-ROW_ID.
+*  FIELD-SYMBOLS:
+*    <LFS_T_MODI> TYPE LVC_T_MODI.
+*  CONSTANTS:
+*    C_ONF4_INDXKEY TYPE INDX-SRTFD VALUE 'ONF4_ROW_ID'.
+*
+** F4 리스트 위치를 위한 값 세팅
+*  L_ROW_ID = PS_ROW_NO-ROW_ID + 3.
+*
+*  EXPORT
+*    ONF4_ROW_ID = L_ROW_ID
+*    TO MEMORY ID C_ONF4_INDXKEY.
+*
+*  CASE P_FIELDNAME.
+*
+*    WHEN 'FNAME'.
+*      PERFORM ALV_CL_ONF401_FNAME
+*        USING
+*          P_DISPLAY
+*          ZECTT0010-CCRDT
+*        CHANGING
+*          P_FIELDVALUE.
+*
+*  ENDCASE.
+*
+*  IF P_DISPLAY EQ SPACE.
+*
+*    IF P_FIELDVALUE IS NOT INITIAL.
+*
+*      LS_MODI-VALUE = P_FIELDVALUE.
+**     ... Werte dieser Tabelle werden #bernommen -> letzter Eintrag gewinnt
+*      ASSIGN PR_EVENT_DATA->M_DATA->* TO <LFS_T_MODI>.
+*
+*      LS_MODI-FIELDNAME = P_FIELDNAME.
+*      LS_MODI-ROW_ID    = PS_ROW_NO-ROW_ID.
+**         LS_MODI-VALUE     = .
+*      LS_MODI-ERROR     = SPACE.
+*      LS_MODI-TABIX     = SPACE.
+*      LS_MODI-STYLE     = SPACE.
+*      LS_MODI-STYLE2    = SPACE.
+*      LS_MODI-STYLE3    = SPACE.
+*      LS_MODI-STYLE4    = SPACE.
+*      APPEND LS_MODI TO <LFS_T_MODI>.
+*
+*    ENDIF.
+*
+*  ENDIF.
+*
+*  PR_EVENT_DATA->M_EVENT_HANDLED = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_ONF401_FNAME
+*&---------------------------------------------------------------------*
+FORM ALV_CL_ONF401_FNAME
+  USING
+    P_DISPLAY
+*    P_CCRDT TYPE ZECCCRDT
+  CHANGING
+    P_VALUE TYPE LVC_VALUE.
+*  DATA:
+*    L_TABIX TYPE SY-TABIX,
+*    L_FIELDVALUE TYPE HELP_INFO-FLDVALUE,
+*    LT_RETURN TYPE DDSHRETVAL OCCURS 0 WITH HEADER LINE,
+*    LT_HELP TYPE ZECS_FNAME_SH OCCURS 0 WITH HEADER LINE.
+*
+** 조건값
+*  L_FIELDVALUE = P_VALUE.
+*
+** 품목정보
+*  SELECT
+*    A~ITMGR
+*    A~ITMGRT
+*    A~ITMGB
+*    A~CRATY
+*    B~ITMCD
+*    B~ITMTX
+*    B~XAUTO
+*    B~ISIND
+*    B~SPECF
+*    B~DELFL
+*    B~MEINS
+*    B~CGCODE
+*    B~MCODE
+*    B~HNAME
+*    B~HSIZE
+*    B~HUNIT
+*    FROM ZECTM0010 AS A
+*      INNER JOIN ZECTM0020 AS B
+*        ON A~ITMGR EQ B~ITMGR
+*    INTO CORRESPONDING FIELDS OF TABLE LT_HELP
+*    WHERE A~ITMGB EQ C_ITMGB_M  "자재
+*      AND ( B~DELFL NE YSMP_X OR      "삭제제외
+*            B~ITMCD EQ P_VALUE ).      "입렵값 포함
+*
+*  SORT LT_HELP BY
+*    ITMCD.
+*
+*  LOOP AT LT_HELP.
+*    L_TABIX = SY-TABIX.
+*
+*    PERFORM GET_DOMAIN_FIXED_VALUE_TEXT(YEDSCOMF01)
+*      USING:
+**     품목구분내역
+*        'ZECITMGB'
+*        LT_HELP-ITMGB
+*      CHANGING
+*        LT_HELP-ITMGBT,
+**     품목 특별구분자 내역
+*        'ZECISIND'
+*        LT_HELP-ISIND
+*      CHANGING
+*        LT_HELP-ISINDT.
+**   단가정보
+*    SELECT SINGLE
+*      WAERS
+*      MATPR
+*      LABPR
+*      EXPPR
+*      FROM ZECTM0022
+*      INTO CORRESPONDING FIELDS OF LT_HELP
+*      WHERE ITMCD EQ LT_HELP-ITMCD
+*        AND ENDDT GE P_CCRDT
+*        AND STRDT LE P_CCRDT
+*        AND DELFL NE YSMP_X.
+*
+*    LT_HELP-SUMPR =
+*      LT_HELP-MATPR + LT_HELP-LABPR + LT_HELP-EXPPR.
+*
+*    MODIFY LT_HELP INDEX L_TABIX
+*      TRANSPORTING
+*        ITMGBT
+*        ISINDT
+*        WAERS
+*        MATPR
+*        LABPR
+*        EXPPR
+*        SUMPR.
+*
+*    CLEAR:
+*      LT_HELP.
+*  ENDLOOP.
+*
+*  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+*    EXPORTING
+*      DDIC_STRUCTURE   = 'ZECS_FNAME_SH'
+*      RETFIELD         = 'FNAME'
+*      DYNPPROG         = SY-REPID
+*      DYNPNR           = SY-DYNNR
+*      VALUE_ORG        = 'S'
+*      VALUE            = L_FIELDVALUE
+**     MULTIPLE_CHOICE  = 'X'
+*      DISPLAY          = P_DISPLAY
+*      CALLBACK_PROGRAM = SY-REPID
+*      CALLBACK_FORM    = 'ALV_CL_ONF401_CLBK_FNAME'
+*    TABLES
+*      VALUE_TAB        = LT_HELP
+*      RETURN_TAB       = LT_RETURN
+*    EXCEPTIONS
+*      PARAMETER_ERROR  = 1
+*      NO_VALUES_FOUND  = 2
+*      OTHERS           = 3.
+*  IF SY-SUBRC EQ 0.
+*    READ TABLE LT_RETURN INDEX 1.
+*    IF SY-SUBRC EQ 0.
+*      P_VALUE = LT_RETURN-FIELDVAL.
+*    ENDIF.
+*  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_CL_ONF401_CLBK_FNAME
+*&---------------------------------------------------------------------*
+FORM ALV_CL_ONF401_CLBK_FNAME
+  TABLES
+    PT_RECORD STRUCTURE SEAHLPRES
+  CHANGING
+    PS_SHLP TYPE SHLP_DESCR
+    PS_CALLCONTROL TYPE DDSHF4CTRL.
+  DATA:
+    L_TABIX       TYPE SY-TABIX,
+    LS_FIELDDESCR TYPE DFIES,
+    LS_FIELDPROP  TYPE DDSHFPROP,
+    LS_SELOPT     TYPE DDSHSELOPT,
+    L_ROW_ID      TYPE LVC_S_ROID-ROW_ID.
+  CONSTANTS:
+    C_ONF4_INDXKEY TYPE INDX-SRTFD VALUE 'ONF4_ROW_ID'.
+
+** Dialog type ( Dialog with value restriction )
+*  PS_SHLP-INTDESCR-DIALOGTYPE = 'C'.
+** Before the restriction dialog box appears
+*  PS_CALLCONTROL-STEP = 'PRESEL'.
+** For getting Maximum no of hits tab
+*  PS_CALLCONTROL-MAXRECORDS = ' '.
+**  PS_CALLCONTROL-MAXRECORDS = '500'.
+** X: 최대 적중 수를 조회하지 않음
+*  PS_CALLCONTROL-NO_MAXDISP = ' '.
+*
+** 전체 탐색도움말 매개변수의 속성
+*  LOOP AT PS_SHLP-FIELDPROP INTO LS_FIELDPROP.
+*    L_TABIX = SY-TABIX.
+*
+**   선택화면에서 제외
+*    CASE LS_FIELDPROP-FIELDNAME.
+*      WHEN 'ITMGBT'
+*        OR 'LABPR'
+*        OR 'EXPPR'
+*        OR 'SUMPR'.
+*        LS_FIELDPROP-SHLPSELPOS = 0.  "Suppress in the selection popup
+*
+*    ENDCASE.
+*
+**   리스트에서 제외
+*    CASE LS_FIELDPROP-FIELDNAME.
+*      WHEN 'ITMGB'
+*        OR 'LABPR'
+*        OR 'EXPPR'
+*        OR 'SUMPR'.
+*        LS_FIELDPROP-SHLPLISPOS = 0.  "Suppress in the hit list
+*
+*    ENDCASE.
+*
+** 선택화면에서 입력불가
+*    CASE LS_FIELDPROP-FIELDNAME.
+*      WHEN 'ITMGB'
+*        OR 'LABPR'
+*        OR 'EXPPR'
+*        OR 'SUMPR'.
+*        LS_FIELDPROP-SHLPSELDIS = 'X'.
+*
+*    ENDCASE.
+*
+*    MODIFY PS_SHLP-FIELDPROP FROM LS_FIELDPROP
+*      INDEX L_TABIX.
+*
+*    CLEAR:
+*      LS_FIELDPROP.
+*  ENDLOOP.
+*
+** 커서위치
+*  IMPORT
+*    ONF4_ROW_ID = L_ROW_ID
+*    FROM MEMORY ID C_ONF4_INDXKEY.
+*
+*  FREE MEMORY ID C_ONF4_INDXKEY.
+*
+*  PS_CALLCONTROL-CUROW = L_ROW_ID.
+*  PS_CALLCONTROL-CUCOL = 30.
+*
+** HELP 리스트에 Check box로 나오도록
+*  LS_FIELDDESCR-MASK+6(1) = 'X'.
+*
+*  MODIFY PS_SHLP-FIELDDESCR FROM LS_FIELDDESCR
+*    TRANSPORTING
+*      MASK
+*    WHERE FIELDNAME EQ 'XAUTO'
+*       OR FIELDNAME EQ 'DELFL'.
+*
+** 선택조건
+*  LS_SELOPT-SHLPNAME  = ''.
+*  LS_SELOPT-SHLPFIELD = 'ITMGB'.
+*  LS_SELOPT-SIGN      = 'I'.
+*  LS_SELOPT-OPTION    = 'EQ'.
+*  LS_SELOPT-LOW       = C_ITMGB_M.  "자재
+**  LS_SELOPT-HIGH      = .
+*  APPEND LS_SELOPT TO PS_SHLP-SELOPT.
+*  CLEAR LS_SELOPT.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_REFRESH_OBJECT01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_REFRESH_OBJECT01.
+
+* ALV Style & Color
+  PERFORM ALV_CL_CELL_CONTROL01
+    TABLES
+      GT_LIST01.
+
+* Reset ALV Layout
+* ALV 그리드 제목
+  PERFORM ALV_CL_SET_ALV_GRID_TITLE01
+    CHANGING
+      GS_LAYOUT01-GRID_TITLE.
+
+  CALL METHOD G_ALV_GRID01->SET_FRONTEND_LAYOUT
+    EXPORTING
+      IS_LAYOUT = GS_LAYOUT01.
+
+* ALV Refresh
+  PERFORM ALV_CL_REFRESH_TABLE_DISPLAY(YEDSCOMA01)
+    USING
+      G_ALV_GRID01.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_CHANGE_MODE01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_CHANGE_MODE01.
+
+* 셀 입력가능 설정
+  PERFORM ALV_CL_SET_FOR_INPUT01
+    USING
+      G_ALV_GRID01.
+
+* Reset ALV fieldcatalog
+  PERFORM ALV_CL_FIELDCATALOG_MERGE01
+    USING
+      C_ALV_STRUNAME01
+    CHANGING
+      GT_FDCAT01.
+
+  CALL METHOD G_ALV_GRID01->SET_FRONTEND_FIELDCATALOG
+    EXPORTING
+      IT_FIELDCATALOG = GT_FDCAT01.
+
+* Refresh ALV Objects
+  PERFORM ALV_CL_REFRESH_OBJECT01.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_SET_ALV_GRID_TITLE01
+*&---------------------------------------------------------------------*
+FORM ALV_CL_SET_ALV_GRID_TITLE01
+  CHANGING
+    P_GRID_TITLE.
+  DATA:
+    L_TXT_LINES TYPE CHAR30.
+
+********************
+* <<공통수정부분>> *
+********************
+* 리스트 제목
+  PERFORM GET_ALV_GRID_TITLE(YEDSCOMF01)  "유지보수 프로그램용
+    USING
+      C_MAIN_TABNAME01
+      '리스트   &건'
+    CHANGING
+      P_GRID_TITLE.     "ALV Grid title
+  WRITE LINES( GT_LIST01 ) TO L_TXT_LINES LEFT-JUSTIFIED.
+  REPLACE '&' IN P_GRID_TITLE WITH L_TXT_LINES
+    IN CHARACTER MODE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_FC_POPUP_DISPLAY_LIST01_DL
+*&---------------------------------------------------------------------*
+FORM ALV_FC_POPUP_DISPLAY_LIST01_DL.
+  DATA:
+    LT_FIELDCAT           TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE,
+    LT_SORT               TYPE SLIS_T_SORTINFO_ALV WITH HEADER LINE,
+    LS_LAYOUT             TYPE SLIS_LAYOUT_ALV,
+    LS_VARIANT            TYPE DISVARIANT,    "finally chosen variant.
+    L_REPID               TYPE SY-REPID,
+    L_TABIX               TYPE SY-TABIX,
+    L_ALVBUFFER(11)       TYPE C,
+    L_GRID_TITLE          TYPE LVC_TITLE,
+    L_TXT_LINES           TYPE CHAR30,
+    L_SCREEN_START_COLUMN TYPE I VALUE 20,
+    L_SCREEN_START_LINE   TYPE I VALUE 3,
+    L_SCREEN_END_COLUMN   TYPE I VALUE 210,
+    L_SCREEN_END_LINE     TYPE I.  "VALUE 20.
+
+*--------------------------------*
+* Popup 조회용 화면 크기
+*--------------------------------*
+  PERFORM SET_SCREEN_END_LINE(YEDSCOMF01)
+    TABLES
+      GT_LIST01_DL
+    CHANGING
+      L_SCREEN_END_LINE.
+
+  L_REPID = SY-REPID.
+
+*--------------------------------*
+* ALV Grid Variant
+*--------------------------------*
+  LS_VARIANT-HANDLE  = 'DLL1'.
+  LS_VARIANT-REPORT  = L_REPID.
+
+*--------------------------------*
+* Transfer LVC to SLIS
+*--------------------------------*
+  L_ALVBUFFER = 'BFOFF EUOFF'.
+  SET PARAMETER ID 'ALVBUFFER' FIELD L_ALVBUFFER.
+
+  CALL FUNCTION 'LVC_TRANSFER_TO_SLIS'
+    EXPORTING
+      IT_FIELDCAT_LVC         = GT_FDCAT01
+      IT_SORT_LVC             = GT_SORT01
+*     IT_FILTER_LVC           =
+*     IS_LAYOUT_LVC           =
+    IMPORTING
+      ET_FIELDCAT_ALV         = LT_FIELDCAT[]
+      ET_SORT_ALV             = LT_SORT[]
+*     ET_FILTER_ALV           =
+*     ES_LAYOUT_ALV           =
+*   TABLES
+*     IT_DATA                 =
+    EXCEPTIONS
+      IT_DATA_MISSING         = 1
+      IT_FIELDCAT_LVC_MISSING = 2
+      OTHERS                  = 3.
+
+*--------------------------------*
+* ALV Grid Layout
+*--------------------------------*
+  LS_LAYOUT-ZEBRA               = 'X'.
+  LS_LAYOUT-COLWIDTH_OPTIMIZE   = 'X'.
+  PERFORM GET_MATN_PROG_TITLE(YEDSCOMF01)  "유지보수 프로그램용
+    USING
+      C_MAIN_TABNAME01
+      ': 삭제데이터(복구대상)'
+    CHANGING
+      LS_LAYOUT-WINDOW_TITLEBAR.     "Titlebar
+  LS_LAYOUT-CELL_MERGE          = 'X'.
+*  LS_LAYOUT-TOTALS_BEFORE_ITEMS = 'X'.
+  LS_LAYOUT-BOX_FIELDNAME       = 'MARK'.
+*  LS_LAYOUT-INFO_FIELDNAME     = 'ROWSCOL'.
+  LS_LAYOUT-COLTAB_FIELDNAME    = 'CELLSCOL'.
+
+*--------------------------------*
+* ALV Grid Sort
+*--------------------------------*
+*  PERFORM ALV_FC_APPEND_SORT(YEDSCOMA01)
+*    TABLES
+*      LT_SORT
+*    USING:
+*      'FNAME' 'X' '' ''.
+
+*--------------------------------*
+* ALV Grid Field Catalogue
+*--------------------------------*
+** 상태 관련 컬럼 숨김 해제
+*  LT_FIELDCAT-NO_OUT = 'X'.
+*
+*  MODIFY LT_FIELDCAT
+*    TRANSPORTING
+*      NO_OUT
+*    WHERE FIELDNAME EQ 'STATU'
+*       OR FIELDNAME EQ 'STATU_ICON'
+*       OR FIELDNAME EQ 'STATU_MSG'.
+*
+*  CLEAR LT_FIELDCAT.
+
+*--------------------------------*
+* ALV Grid Title
+*--------------------------------*
+  PERFORM GET_ALV_GRID_TITLE(YEDSCOMF01)  "유지보수 프로그램용
+    USING
+      C_MAIN_TABNAME01
+      '삭제데이터 리스트   &건'
+    CHANGING
+      L_GRID_TITLE.     "ALV Grid title
+  WRITE LINES( GT_LIST01_DL ) TO L_TXT_LINES LEFT-JUSTIFIED.
+  REPLACE '&' IN L_GRID_TITLE WITH L_TXT_LINES
+    IN CHARACTER MODE.
+
+*-------------------------------------*
+* Deselect ALV BOX_FIELDNAME Value
+*-------------------------------------*
+  PERFORM ALV_SELECT_OR_DESELECT_ROWS(YEDSCOMA01)
+    TABLES
+      GT_LIST01_DL
+    USING
+      'DALL'
+      LS_LAYOUT-BOX_FIELDNAME.
+
+*--------------------------------*
+* ALV Grid Display
+*--------------------------------*
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+*     I_BACKGROUND_ID         = 'ALV_BACKGROUND' " BACK GROUND 무늬
+*     I_BUFFER_ACTIVE         = ' '
+      I_CALLBACK_PROGRAM      = L_REPID
+*     I_CALLBACK_PF_STATUS_SET = 'ALV_FC_PF_STATUS_LIST01_DL'
+      I_CALLBACK_USER_COMMAND = 'ALV_FC_USER_COMMAND_LIST01_DL'
+*     I_CALLBACK_TOP_OF_PAGE  = C_ALV_TOP_OF_PAGE
+      I_GRID_TITLE            = L_GRID_TITLE
+      IS_LAYOUT               = LS_LAYOUT
+      IT_FIELDCAT             = LT_FIELDCAT[]
+*     IT_EXCLUDING            =
+      IT_SORT                 = LT_SORT[]
+*     I_DEFAULT               = 'X'
+      I_SAVE                  = 'A'
+      IS_VARIANT              = LS_VARIANT
+*     IT_EVENTS               = LT_EVENTS[]
+*     IS_PRINT                = LS_PRINT
+      I_SCREEN_START_COLUMN   = L_SCREEN_START_COLUMN
+      I_SCREEN_START_LINE     = L_SCREEN_START_LINE
+      I_SCREEN_END_COLUMN     = L_SCREEN_END_COLUMN
+      I_SCREEN_END_LINE       = L_SCREEN_END_LINE
+    TABLES
+      T_OUTTAB                = GT_LIST01_DL.
+
+ENDFORM.
+*---------------------------------------------------------------------*
+*       FORM ALV_FC_PF_STATUS_LIST01_DL
+*---------------------------------------------------------------------*
+FORM ALV_FC_PF_STATUS_LIST01_DL
+  USING
+    PT_EXFCD TYPE SLIS_T_EXTAB.
+*  DATA:
+*    L_LINES         TYPE I,
+*    L_TOTALLINE(15).
+
+* 상태
+*  SET PF-STATUS 'LIST01_DL' EXCLUDING PT_EXFCD.
+
+** 제목
+*  L_LINES = LINES( GT_LIST01 ).
+
+*  SET TITLEBAR 'LIST01_DL'.  "WITH
+*    L_LINES.
+
+ENDFORM.
+*---------------------------------------------------------------------*
+*       FORM ALV_FC_USER_COMMAND_LIST01_DL
+*---------------------------------------------------------------------*
+FORM ALV_FC_USER_COMMAND_LIST01_DL
+  USING
+    VALUE(P_UCOMM) TYPE SY-UCOMM
+    PS_SELFIELD TYPE SLIS_SELFIELD.
+
+  CASE P_UCOMM.
+
+    WHEN '&IC1'.  "셀 더블클릭
+      PERFORM ALV_FC_CELL_DBL_CLCK_LIST01_DL
+        USING
+          PS_SELFIELD.
+
+    WHEN '&ONT'.  "계속 : 행복구
+      PERFORM ALV_FC_RETR_DEL_ROWS_LIST01_DL.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_FC_CELL_DBL_CLCK_LIST01_DL
+*&---------------------------------------------------------------------*
+FORM ALV_FC_CELL_DBL_CLCK_LIST01_DL
+  USING
+    PS_SELFIELD TYPE SLIS_SELFIELD.
+  DATA:
+    LS_LIST_DL  TYPE TY_S_LIST01_DL,
+    L_NOT_FOUND.
+
+  READ TABLE GT_LIST01_DL INTO LS_LIST_DL
+       INDEX PS_SELFIELD-TABINDEX.
+  IF SY-SUBRC NE 0.
+    MESSAGE S046.
+    RETURN.
+  ENDIF.
+
+* 필드별로 특별히 적용할 더블클릭 기능을 먼저 실행할 수 있도록 하고
+* 공통 더블클릭 기능을 사용함
+  CASE PS_SELFIELD-FIELDNAME.
+
+    WHEN ' '.
+
+    WHEN OTHERS.
+*     공용 Double click
+      PERFORM DOUBLE_CLICK_COM(YEDSCOMF01)
+        USING
+          PS_SELFIELD-TABNAME
+          PS_SELFIELD-FIELDNAME
+          LS_LIST_DL
+        CHANGING
+          L_NOT_FOUND.
+
+      IF L_NOT_FOUND EQ YSMP_X.
+        MESSAGE S046.
+      ENDIF.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_FC_RETR_DEL_ROWS_LIST01_DL
+*&---------------------------------------------------------------------*
+FORM ALV_FC_RETR_DEL_ROWS_LIST01_DL.
+  DATA:
+    LS_LIST_DL TYPE TY_S_LIST01_DL,
+    LS_LIST    TYPE TY_S_LIST01,
+    L_LINES    TYPE I,
+    L_TABIX    TYPE SY-TABIX.
+
+  L_LINES = LINES( GT_LIST01 ).
+
+  LOOP AT GT_LIST01_DL INTO LS_LIST_DL
+    WHERE MARK EQ YSMP_X.
+    L_TABIX = SY-TABIX.
+
+*   삭제리스트에서 데이터 삭제
+    DELETE GT_LIST01_DL INDEX L_TABIX.
+
+*   삭제된 데이터 리스트에 추가
+    MOVE-CORRESPONDING LS_LIST_DL TO LS_LIST.
+
+    L_LINES = L_LINES + 1.
+
+*   필드값 유효성 체크
+    PERFORM CHECK_FIELDS_VALUE_VALID01
+      USING
+        L_LINES
+      CHANGING
+        LS_LIST.
+
+    APPEND LS_LIST TO GT_LIST01.
+    CLEAR LS_LIST.
+
+    CLEAR:
+      LS_LIST_DL.
+  ENDLOOP.
+
+* 선택한 라인이 없는 경우 오류메세지 후 종료
+  IF SY-SUBRC NE 0.
+    MESSAGE S013  DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+* 화면 종료
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_MODIFY_CELL
+*&---------------------------------------------------------------------*
+FORM ALV_CL_MODIFY_CELL
+  USING
+    VALUE(PR_DATA_CHANGED) TYPE REF TO CL_ALV_CHANGED_DATA_PROTOCOL
+    VALUE(P_ROW_ID)
+    VALUE(PS_LIST)
+    VALUE(P_FIELDNAME).
+  FIELD-SYMBOLS:
+    <LFS_FIELDVALUE> TYPE ANY.
+
+  ASSIGN COMPONENT P_FIELDNAME OF STRUCTURE PS_LIST
+    TO <LFS_FIELDVALUE>.
+
+  CHECK SY-SUBRC EQ 0.
+
+  CALL METHOD PR_DATA_CHANGED->MODIFY_CELL
+    EXPORTING
+      I_ROW_ID    = P_ROW_ID
+      I_FIELDNAME = P_FIELDNAME
+      I_VALUE     = <LFS_FIELDVALUE>.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_GET_SELECTED_ROWS
+*&---------------------------------------------------------------------*
+FORM ALV_CL_GET_SELECTED_ROWS
+  TABLES
+    PT_ROWS TYPE LVC_T_ROW
+  USING
+    VALUE(P_ALV_GRID) TYPE REF TO CL_GUI_ALV_GRID.
+
+  CHECK P_ALV_GRID IS NOT INITIAL.
+
+  CALL METHOD P_ALV_GRID->GET_SELECTED_ROWS
+    IMPORTING
+      ET_INDEX_ROWS = PT_ROWS[].
+
+* 소계,총계라인 제외
+  DELETE PT_ROWS
+    WHERE ROWTYPE IS NOT INITIAL.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_COPY_ROWS_PROCESS
+*&---------------------------------------------------------------------*
+FORM ALV_CL_COPY_ROWS_PROCESS
+  TABLES
+    PT_INDEX_ROWS
+    PT_ROWS TYPE LVC_T_ROW.
+  DATA:
+    L_TABIX TYPE SY-TABIX,
+    L_CNT   TYPE I,
+    LS_ROWS TYPE LVC_S_ROW,
+    LS_LIST TYPE TY_S_LIST01.
+
+* 행복사
+* 기존 데이터의 레코드유형(RECTY)인 E(기존)를 가지고
+* 필드값 유효성 체크에서 리스트내 중복 확인을 함
+
+* 선택한 라인 아래로 복사
+  LOOP AT PT_ROWS.
+    L_TABIX = PT_ROWS-INDEX + L_CNT. "삽입한 건수만큼 INDEX 번호 증가시킴
+
+    READ TABLE GT_LIST01 INTO LS_LIST
+      INDEX L_TABIX.
+
+    CLEAR:  "복사한 레코드에서 지워줄 필드 CLEAR
+      LS_LIST-CRDAT,
+      LS_LIST-CRTIM,
+      LS_LIST-CRNAM,
+      LS_LIST-CHDAT,
+      LS_LIST-CHTIM,
+      LS_LIST-CHNAM.
+
+*   ALV REFRESH 후 라인 선택 유지
+    LS_ROWS-INDEX = L_TABIX.
+
+    APPEND LS_ROWS TO PT_INDEX_ROWS.
+    CLEAR LS_ROWS.
+
+*    삽입할 INDEX 번호: 현재 INDEX 번호 아래 삽입
+    L_TABIX = L_TABIX + 1.
+
+    LS_LIST-RECTY = YSMP_RECTY_N.  "신규
+
+*    필드값 유효성 체크
+    PERFORM CHECK_FIELDS_VALUE_VALID01
+      USING
+        L_TABIX
+      CHANGING
+        LS_LIST.
+
+    INSERT LS_LIST INTO GT_LIST01
+      INDEX L_TABIX.
+    CLEAR LS_LIST.
+
+*    삽입한 건수
+    L_CNT = L_CNT + 1.
+
+    CLEAR:
+      L_TABIX,
+      PT_ROWS.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_SET_CURRENT_CELL_VIA_ID
+*&---------------------------------------------------------------------*
+FORM ALV_CL_SET_CURRENT_CELL_VIA_ID
+  USING
+    VALUE(P_ALV_GRID) TYPE REF TO CL_GUI_ALV_GRID
+    VALUE(P_COL_NAME)
+    VALUE(P_ROW_INDEX).
+  DATA:
+    LS_ROW_ID    LIKE LVC_S_ROW,
+    LS_COLUMN_ID LIKE LVC_S_COL.
+
+  CHECK P_ALV_GRID IS NOT INITIAL.
+
+* 커서가 위치할 필드명을 넣는다.
+  LS_COLUMN_ID-FIELDNAME = P_COL_NAME.
+* 커서가 위치할 INDEX를 넣는다.
+  LS_ROW_ID-INDEX = P_ROW_INDEX.
+
+  CALL METHOD P_ALV_GRID->SET_CURRENT_CELL_VIA_ID
+    EXPORTING
+      IS_ROW_ID    = LS_ROW_ID
+      IS_COLUMN_ID = LS_COLUMN_ID.
+*      IS_ROW_NO    = P_ROW_NO.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_INSERT_ROWS_PROCESS
+*&---------------------------------------------------------------------*
+FORM ALV_CL_INSERT_ROWS_PROCESS
+  TABLES
+    PT_INDEX_ROWS
+    PT_ROWS TYPE LVC_T_ROW.
+  DATA:
+    L_TABIX TYPE SY-TABIX,
+    L_CNT   TYPE I,
+    LS_ROWS TYPE LVC_S_ROW,
+    LS_LIST TYPE TY_S_LIST01.
+
+* 행삽입
+* 빈 라인값을 가지고 필드값 유효성 체크를 하여 나온 라인 값을
+* 선택한 행 수 만큼 행 아래 라인에 추가함
+
+* 선택한 라인에 빈 라인 삽입
+  LOOP AT PT_ROWS.
+    L_TABIX = PT_ROWS-INDEX + L_CNT. "삽입한 건수만큼 INDEX 번호 증가 시킴
+
+    LS_LIST-RECTY = YSMP_RECTY_N.  "신규
+
+*  필드값 유효성 체크
+    PERFORM CHECK_FIELDS_VALUE_VALID01
+      USING
+        L_TABIX
+      CHANGING
+        LS_LIST.
+
+*   삽입할 Index번호 : 현재 Index번호에 삽입
+    INSERT LS_LIST INTO GT_LIST01
+      INDEX L_TABIX.
+    CLEAR LS_LIST.
+
+*    ALV REFRESH 후 라인 선택 유지
+    LS_ROWS-INDEX = L_TABIX + '1'.
+
+    APPEND LS_ROWS TO PT_INDEX_ROWS.
+    CLEAR LS_ROWS.
+
+*    삽입한 건수
+    L_CNT = L_CNT + 1.
+
+    CLEAR:
+    L_TABIX,
+    PT_ROWS.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_APPEND_ROWS_PROCESS
+*&---------------------------------------------------------------------*
+FORM ALV_CL_APPEND_ROWS_PROCESS.
+  DATA:
+    L_LINES    TYPE I,
+    LRF_S_LIST TYPE REF TO DATA,
+    LS_LIST    TYPE TY_S_LIST01.
+
+* 행추가
+* 마지막 라인 밑으로 20개의 빈 리스트 추가
+
+*  현재 리스트의 건수
+  L_LINES = LINES( GT_LIST01 ).
+
+*  리스트 마지막 라인 아래에 빈 라인 추가
+  DO 20 TIMES.
+
+    L_LINES = L_LINES + 1.
+
+    LS_LIST-RECTY = YSMP_RECTY_N.  "신규
+
+*   필드값 유효성 체크
+    PERFORM CHECK_FIELDS_VALUE_VALID01
+      USING
+        L_LINES
+      CHANGING
+        LS_LIST.
+
+    APPEND LS_LIST TO GT_LIST01.
+    CLEAR LS_LIST.
+
+  ENDDO.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form ALV_CL_DELETE_ROWS_PROCESS
+*&---------------------------------------------------------------------*
+FORM ALV_CL_DELETE_ROWS_PROCESS
+  TABLES
+    PT_ROWS TYPE LVC_T_ROW.
+  DATA:
+    L_TABIX    TYPE SY-TABIX,
+    L_CNT      TYPE I,
+    LS_LIST    TYPE TY_S_LIST01,
+    LS_LIST_DL TYPE TY_S_LIST01_DL.
+
+* 행 삭제
+  LS_LIST_DL-RECTY = YSMP_RECTY_N.  "신규
+
+  LOOP AT PT_ROWS.
+    L_TABIX = PT_ROWS-INDEX - L_CNT. "삭제된 건수 만큼 INDEX 번호 감소시킴
+
+*   삭제할 라인 읽어서 삭제용 인터널 테이블로 옮긴 후
+*   기존라인 삭제
+    READ TABLE GT_LIST01 INTO LS_LIST
+      INDEX L_TABIX.
+
+*    기존 데이터이거나 신규 데이터 중 오류가 없는 건만
+*    복원용 삭제리스트에 추가
+    IF LS_LIST-RECTY EQ YSMP_RECTY_E OR        "기존
+       ( LS_LIST-RECTY EQ YSMP_RECTY_N AND     "신규
+         LS_LIST-STATU NE YSMP_STATU_E ).      "오류
+
+      MOVE-CORRESPONDING LS_LIST TO LS_LIST_DL.
+
+      APPEND LS_LIST_DL TO GT_LIST01_DL.
+      CLEAR LS_LIST_DL.
+
+    ENDIF.
+
+*   선택한 라인 삭제
+    DELETE GT_LIST01 INDEX L_TABIX.
+
+*   삭제한 건수
+    L_CNT = L_CNT + 1.
+
+    CLEAR:
+      LS_LIST-RECTY,
+      LS_LIST-STATU,
+      PT_ROWS.
+
+  ENDLOOP.
+
+ENDFORM.
